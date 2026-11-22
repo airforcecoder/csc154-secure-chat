@@ -4,7 +4,8 @@
 **Project:** Secure Chat Application  
 **Starting point:** My CSC 138 Python chat client/server project
 
-> **Project status: Step 0 — Original CSC 138 code preserved and pushed to GitHub.**
+> **Project status: Step 1 complete — JSON protocol and six local tests passed.**
+> Step 1 is merged into `main` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1), source commit `9ddef60`). Next: **Commit 2 — JSON server** (teammate).
 >
 > `client.py` and `server.py` currently send and log **plaintext**. They are a
 > networking foundation, **not a secure chat application yet**. Do not use them
@@ -26,7 +27,7 @@ plaintext or ever having an RSA private key or usable AES key.
 | Commit | Assigned | What to finish | Requires |
 |---|---|---|---|
 | **0 ✅** | Ian | Save original CSC 138 client/server to GitHub | Done: `89b1fed` |
-| **1** | **Ian** | `protocol.py`: framed JSON send/receive and documented message types | 0 |
+| **1 ✅** | **Ian** | `protocol.py`: newline-delimited JSON send/receive; six passing protocol tests | Done: `9ddef60` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1)) |
 | **2** | **Teammate** | `server.py`: JSON registration and `LIST` for multiple clients | 1 |
 | **3** | **Ian** | `client.py`: JSON registration, `LIST`, `QUIT`, receiving thread | 1, 2 |
 | **4** | **Teammate** | `crypto_utils.py`: RSA key generation, password-protected PEM save/load | 0 (can start alongside 1) |
@@ -46,7 +47,7 @@ plaintext or ever having an RSA private key or usable AES key.
 **Ian — client, protocol, and crypto tests**
 
 - [x] Commit 0 — original CSC 138 starter
-- [ ] Commit 1 — JSON protocol
+- [x] Commit 1 — JSON protocol and six tests (merged into `main`)
 - [ ] Commit 3 — JSON client
 - [ ] Commit 6 — crypto tests
 - [ ] Commit 8 — key management in client
@@ -68,13 +69,13 @@ plaintext or ever having an RSA private key or usable AES key.
 
 ### Best order to work together
 
-1. **Start in parallel:** Ian works on **1** (protocol); teammate works on **4** (RSA key generation). Agree on the JSON field names and protocol before joining code.
+1. **Step 1 is merged:** Ian finished **1** (protocol). Teammate can now work on **2** (JSON server) and develop **4** (RSA key generation) in parallel. Agree on the JSON field names and protocol before integrating code.
 2. **Connect the baseline:** Teammate works on **2**, then Ian on **3**. In parallel, teammate can complete **5**.
 3. **Build security:** Ian tests the crypto module in **6**; teammate implements the key directory in **7**. Ian then integrates keys in **8**.
 4. **Finish secure chat:** Teammate completes relay **9**; Ian completes send/receive **10–11**; teammate adds attack tests **12**.
 5. **Finish together:** Run **13**, then complete **14**.
 
-These are **planned future commits**, not already implemented code. They should be created only after the corresponding code is written and tested.
+Only **Commits 0 and 1** are complete. All other numbered commits are planned future work, not implemented code. Create each after its code is written and tested.
 
 ### Shared protocol / security agreement
 
@@ -95,13 +96,15 @@ Use newline-delimited JSON over TCP, one JSON object per line, with an explicit 
 csc154-secure-chat/
 ├── client.py          # Original CSC 138 client (unchanged)
 ├── server.py          # Original CSC 138 server (unchanged)
+├── protocol.py        # JSON send/receive helpers (Step 1)
+├── test_protocol.py   # Six protocol tests (Step 1)
 ├── README.md          # Project setup, plan, and checklist
 ├── requirements.txt   # Dependency for the upcoming crypto module
 └── .gitignore         # Keep keys, passwords, and generated files out of Git
 ```
 
-**To be added in later steps:** `crypto_utils.py`, automated tests, and any
-other modules needed for the secure message protocol.
+**To be added in later steps:** `crypto_utils.py`, cryptography/integration tests,
+and any other modules needed for secure messages.
 
 ## Step 0 — Run the existing baseline
 
@@ -143,115 +146,36 @@ QUIT
 can read/log that same message. **This plaintext behavior must be removed
 before final submission.**
 
-## Implementation roadmap — one change at a time
+## Step 1 complete — JSON protocol
 
-Commit and test each step before moving to the next one. The checkbox list
-tracks **implementation**, not merely the existence of instructions.
+**Already merged into `main`:** `protocol.py` and `test_protocol.py`.
 
-### Step 0 — Preserve the CSC 138 starting point
+- [x] Implement newline-delimited JSON packets with a required `type` field.
+- [x] Add `send_json(socket, message)` and `receive_json(reader)` helpers.
+- [x] Add a 64 KB maximum packet size and invalid/incomplete JSON checks.
+- [x] Test normal messages, multiple packets, split packets, invalid JSON,
+  missing `type`, and disconnections.
+- [x] Run `python test_protocol.py -v` on Windows: **6 tests passed**.
+- [x] Merge the Step 1 branch ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1)).
 
-- [x] Copy original `client.py` without modifying it.
-- [x] Copy original `server.py` without modifying it.
-- [x] Add a README with the setup, phased plan, and requirements.
-- [x] Add `.gitignore` and `requirements.txt`.
-- [ ] Run and confirm the original server and two clients on my computer.
-- [x] Push the baseline to a new GitHub repository.
+**Note:** `client.py` and `server.py` still use their old plaintext protocol.
+The new helpers are deliberately separate until Commits 2 and 3 integrate
+them. The unit tests do **not** prove that the whole chat is secure yet.
 
-Suggested Git commit: `Step 0: import original CSC 138 chat application`
+### Test Step 1 yourself
 
-### Step 1 — Introduce a reliable JSON protocol
+```powershell
+python test_protocol.py -v
+```
 
-- [ ] Replace plaintext command transmission with JSON objects containing a `type` field.
-- [ ] Use **length-prefixed** or **newline-delimited** message framing over TCP. A single `recv()` may contain only part of a message, or several messages; do not assume one `recv()` equals one JSON object.
-- [ ] Define protocol messages for registration, user list, public-key request/response, secure message, errors, and quit.
-- [ ] Keep the threaded server and the client's receiving thread.
-- [ ] Confirm three clients can register and list users before adding encryption.
+Expected: six tests with `ok`, ending in `Ran 6 tests` and `OK`.
 
-Suggested Git commit: `Step 1: add framed JSON protocol`
+### Next task — Commit 2 (teammate)
 
-### Step 2 — Build and test `crypto_utils.py` locally
-
-- [ ] Move/adapt the instructor's `secure_message.py` demonstration into reusable functions.
-- [ ] Generate **RSA 2048-bit or stronger** key pairs for each user.
-- [ ] Save keys as PEM; protect each private key using a password; never transmit a private key.
-- [ ] For **every message**, generate a new 256-bit AES key and new 12-byte GCM nonce.
-- [ ] Encrypt plaintext using **AES-256-GCM**.
-- [ ] Encrypt the AES key using the **recipient's RSA public key with OAEP**.
-- [ ] Construct a deterministic signed payload with, in this order:
-  `sender | recipient | message_number | timestamp | encrypted_key | nonce | ciphertext`.
-- [ ] Compute SHA-256 over the complete signed payload; sign the hash with the sender's RSA private key (RSA-PSS / SHA-256).
-- [ ] Encode binary fields as base64 for the JSON packet.
-- [ ] On receive, **verify the signature first**, then decrypt the AES key, then decrypt the message. Show no plaintext on any failure.
-- [ ] Test valid, altered ciphertext, altered header, and wrong-key messages **without networking**.
-
-Suggested Git commit: `Step 2: add RSA and AES-GCM crypto module`
-
-### Step 3 — Change the server into an encrypted relay
-
-- [ ] Register each username together with its RSA **public** key.
-- [ ] Maintain a thread-safe directory: username -> connection + public key.
-- [ ] Return a requested user's public key, or a clear error if the user is unknown.
-- [ ] Send online-user lists.
-- [ ] Route based only on needed `type`, `to`, and `from` fields. Forward secure payloads unchanged.
-- [ ] Verify the claimed `from` username belongs to the sender's registered socket.
-- [ ] Replace the old plaintext history/logging with **ciphertext-only** relay logs.
-- [ ] Never store or print usable AES keys, private keys, or plaintext.
-
-Suggested Git commit: `Step 3: turn server into public-key directory and ciphertext relay`
-
-### Step 4 — Update the client for key management
-
-- [ ] Generate or load a password-protected private PEM file and corresponding public key.
-- [ ] Register username and public key with the server.
-- [ ] Request recipient public keys and cache them.
-- [ ] **Authenticate recipient keys**: the server is potentially malicious. Compare an independently verified fingerprint or pin the expected key. A plain server-provided key alone does **not** prevent key substitution. Document the trust model.
-- [ ] Make key files local only; do **not** add `.pem` files to GitHub or the ZIP submission.
-
-Suggested Git commit: `Step 4: add client key generation and trusted key lookup`
-
-### Step 5 — Encrypt, sign, verify, and display secure messages
-
-- [ ] Convert `MESG <user> <message>` to the secure send operation.
-- [ ] Include signed sender, recipient, message number, timestamp, encrypted key, nonce, ciphertext, and signature.
-- [ ] Maintain monotonically increasing outgoing message numbers.
-- [ ] Track the **highest accepted message number from each sender** and reject a repeated or lower number.
-- [ ] The receiving thread verifies the signature and recipient/header, checks replay protection, decrypts, and **only then** displays plaintext.
-- [ ] Display confirmation when signature verification succeeds and clear errors when it fails.
-- [ ] Keep `LIST`, `HELP`, `QUIT` as useful commands; implement broadcast only if time remains, encrypting separately for each recipient.
-
-Suggested Git commit: `Step 5: send and receive authenticated encrypted chat messages`
-
-### Step 6 — Add malicious-server demonstrations
-
-Implement an explicit server `--malicious` test mode. These attacks are **tests**, not normal behavior:
-
-- [ ] Flip one ciphertext byte -> receiving client refuses it.
-- [ ] Change recipient or message number in the header -> signature verification fails.
-- [ ] Deliver a Bob-bound packet to Carol -> Carol rejects it (wrong recipient and/or RSA decryption failure).
-- [ ] Replay an earlier valid packet -> receiving client rejects an already accepted message number.
-- [ ] Show *why* each test was rejected; do not display unverified plaintext.
-
-Suggested Git commit: `Step 6: add tampering, misrouting, and replay attack demos`
-
-### Step 7 — Test using three clients
-
-- [ ] Start the server and connect `Alice`, `Bob`, and `Carol`.
-- [ ] Alice sends Bob a valid encrypted message; Bob sees verified plaintext.
-- [ ] Confirm the server log contains ciphertext, not readable chat text or AES keys.
-- [ ] Run and record the four malicious-server tests.
-- [ ] Test errors (unknown user, disconnected user, invalid signature, wrong key).
-- [ ] Make sure opening and closing clients does not break the server.
-
-Suggested Git commit: `Step 7: document and verify integration/security tests`
-
-### Step 8 — Final deliverables
-
-- [ ] Submit **one ZIP** with `client.py`, `server.py`, crypto module, requirements, README, and related source files. **Exclude private keys and passwords.**
-- [ ] Record a **two-minute video** showing the server, at least three clients, successful verified encrypted chat, ciphertext in the server log, and at least one rejected attack.
-- [ ] Write a **1–2 page PDF report** explaining design, encryption/decryption, results, challenges, and limitations.
-- [ ] Provide the **GitHub repository link** with the completed source code.
-
-**Course rubric:** Code and functionality = 70 points; video = 20 points; report and GitHub = 10 points.
+Update `server.py` to use `send_json()` and `receive_json()`, add JSON
+registration and an online-user list, and verify the server can handle multiple
+registered clients. Keep encryption for later commits. The teammate should
+create a separate feature branch and merge it by pull request.
 
 ## Installing the cryptography dependency (starting at Step 2)
 
@@ -261,36 +185,33 @@ python -m pip install -r requirements.txt
 
 The baseline does not use `cryptography` yet; installing it prepares for the next steps.
 
-## Original GitHub setup (completed — kept for reference)
+## GitHub repository and working locally
 
-1. Sign in to GitHub and visit **https://github.com/new**.
-2. Repository name: `csc154-secure-chat`.
-3. Choose **Private** while developing, unless your professor requires public access.
-4. **Do not** check *Add a README*, *Add .gitignore*, or *Choose a license* — those files are already in this folder.
-5. Create the empty repository.
-6. Extract the starter ZIP to your computer. In PowerShell, go **inside** the extracted `csc154-secure-chat` folder and run:
+Repository: https://github.com/airforcecoder/csc154-secure-chat
 
-```powershell
-git init
-git add .
-git commit -m "Step 0: import original CSC 138 chat application"
-git branch -M main
-git remote add origin https://github.com/airforcecoder/csc154-secure-chat.git
-git push -u origin main
-```
+- **Commit 0:** `89b1fed` — original CSC 138 starting point.
+- **Commit 1:** `9ddef60` — framed JSON protocol and six tests, merged via PR #1.
+- The `main` branch contains all merged tasks. Develop future tasks on separate branches.
 
-If Git prompts you to configure your author identity, configure your own Git name and email first (`git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"` with **your actual values**), and repeat the commit/push. You may also need to authenticate to GitHub using your configured Git credential manager.
-
-For later steps, after updating/testing files, use:
+To sync local `main` **after saving or stashing any uncommitted changes**:
 
 ```powershell
-git add .
-git commit -m "Step N: brief description of the change"
-git push
+git switch main
+git pull origin main
+python test_protocol.py -v
 ```
 
-**GitHub repository (created and pushed):** https://github.com/airforcecoder/csc154-secure-chat  
-**Baseline commit:** `89b1fed`.
+To begin a future assigned task:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c feature/step-N-short-name
+```
+
+After the code passes its tests, commit and push that branch, then open a pull
+request into `main`. Do not put private keys, passwords, or generated chat
+logs in the repository.
 
 ## Security notes and limitations to explain in the report
 
