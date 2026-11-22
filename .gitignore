@@ -1,0 +1,25 @@
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets and cryptographic key material (never commit)
+*.pem
+*.key
+*.p12
+*.pfx
+keys/
+.env
+.env.*
+
+# Generated logs and runtime state
+chat_logs/
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
