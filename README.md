@@ -5,7 +5,7 @@
 **Starting point:** My CSC 138 Python chat client/server project
 
 > **Project status: Step 1 complete — JSON protocol and six local tests passed.**
-> Step 1 is merged into `main` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1), source commit `9ddef60`). Next: **Commit 2 — JSON server** (teammate).
+> Step 1 is merged into `main` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1), source commit `9ddef60`). Next: **Commit 2 — JSON server** (Tony).
 >
 > `client.py` and `server.py` currently send and log **plaintext**. They are a
 > networking foundation, **not a secure chat application yet**. Do not use them
@@ -22,23 +22,23 @@ plaintext or ever having an RSA private key or usable AES key.
 
 **Development rule:** Every numbered milestone is its own commit. The numbers give us an *integration order*, but some tasks may be developed in parallel on separate branches. **Don't split the tasks into 1–7 for one person and 8–14 for the other** — later tasks depend on earlier work.
 
-**Who edits what:** Ian primarily owns `client.py` and `protocol.py`; teammate primarily owns `server.py` and `crypto_utils.py`. Ian adds the crypto tests in `tests/` after the teammate completes the crypto interface. Both handle final testing and documentation.
+**Who edits what:** Ian primarily owns `client.py` and `protocol.py`; Tony primarily owns `server.py` and `crypto_utils.py`. Ian adds the crypto tests in `tests/` after the Tony completes the crypto interface. Both handle final testing and documentation.
 
 | Commit | Assigned | What to finish | Requires |
 |---|---|---|---|
 | **0 ✅** | Ian | Save original CSC 138 client/server to GitHub | Done: `89b1fed` |
 | **1 ✅** | **Ian** | `protocol.py`: newline-delimited JSON send/receive; six passing protocol tests | Done: `9ddef60` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1)) |
-| **2** | **Teammate** | `server.py`: JSON registration and `LIST` for multiple clients | 1 |
+| **2** | **Tony** | `server.py`: JSON registration and `LIST` for multiple clients | 1 |
 | **3** | **Ian** | `client.py`: JSON registration, `LIST`, `QUIT`, receiving thread | 1, 2 |
-| **4** | **Teammate** | `crypto_utils.py`: RSA key generation, password-protected PEM save/load | 0 (can start alongside 1) |
-| **5** | **Teammate** | `crypto_utils.py`: AES-256-GCM, RSA-OAEP, RSA-PSS/SHA-256 with signed headers; verify before decrypt | 4; agree on packet schema from 1 |
+| **4** | **Tony** | `crypto_utils.py`: RSA key generation, password-protected PEM save/load | 0 (can start alongside 1) |
+| **5** | **Tony** | `crypto_utils.py`: AES-256-GCM, RSA-OAEP, RSA-PSS/SHA-256 with signed headers; verify before decrypt | 4; agree on packet schema from 1 |
 | **6** | **Ian** | `tests/test_crypto.py`: success, bad signatures, altered fields, wrong keys | 5 |
-| **7** | **Teammate** | `server.py`: username/public-key directory and key lookups | 2, 4 |
+| **7** | **Tony** | `server.py`: username/public-key directory and key lookups | 2, 4 |
 | **8** | **Ian** | `client.py`: generate/load user keys, request and independently verify/pin public keys | 3, 4, 7 |
-| **9** | **Teammate** | `server.py`: route encrypted payload unchanged; ciphertext-only logs | 7 |
+| **9** | **Tony** | `server.py`: route encrypted payload unchanged; ciphertext-only logs | 7 |
 | **10** | **Ian** | `client.py`: `MESG` encrypts/signs outgoing messages with fresh key/nonce and message number | 5, 8, 9 |
 | **11** | **Ian** | `client.py`: verify before decrypt/display; reject replayed message numbers | 6, 10 |
-| **12** | **Teammate** | Server `--malicious` tests: ciphertext tampering, altered headers, misrouting, replay | 9, 11 |
+| **12** | **Tony** | Server `--malicious` tests: ciphertext tampering, altered headers, misrouting, replay | 9, 11 |
 | **13** | **Both** | Alice/Bob/Carol integration tests and fixes; prove server sees no plaintext | 11, 12 |
 | **14** | **Both** | Final README, requirements, source ZIP, two-minute demo, 1–2 page PDF report, GitHub link | 13 |
 
@@ -56,7 +56,7 @@ plaintext or ever having an RSA private key or usable AES key.
 - [ ] Commit 13 — integration testing (together)
 - [ ] Commit 14 — report/docs/demo (together)
 
-**Teammate — server and cryptography**
+**Tony — server and cryptography**
 
 - [ ] Commit 2 — JSON server
 - [ ] Commit 4 — RSA key creation/storage
@@ -69,10 +69,10 @@ plaintext or ever having an RSA private key or usable AES key.
 
 ### Best order to work together
 
-1. **Step 1 is merged:** Ian finished **1** (protocol). Teammate can now work on **2** (JSON server) and develop **4** (RSA key generation) in parallel. Agree on the JSON field names and protocol before integrating code.
-2. **Connect the baseline:** Teammate works on **2**, then Ian on **3**. In parallel, teammate can complete **5**.
-3. **Build security:** Ian tests the crypto module in **6**; teammate implements the key directory in **7**. Ian then integrates keys in **8**.
-4. **Finish secure chat:** Teammate completes relay **9**; Ian completes send/receive **10–11**; teammate adds attack tests **12**.
+1. **Step 1 is merged:** Ian finished **1** (protocol). Tony can now work on **2** (JSON server) and develop **4** (RSA key generation) in parallel. Agree on the JSON field names and protocol before integrating code.
+2. **Connect the baseline:** Tony works on **2**, then Ian on **3**. In parallel, Tony can complete **5**.
+3. **Build security:** Ian tests the crypto module in **6**; Tony implements the key directory in **7**. Ian then integrates keys in **8**.
+4. **Finish secure chat:** Tony completes relay **9**; Ian completes send/receive **10–11**; Tony adds attack tests **12**.
 5. **Finish together:** Run **13**, then complete **14**.
 
 Only **Commits 0 and 1** are complete. All other numbered commits are planned future work, not implemented code. Create each after its code is written and tested.
@@ -83,7 +83,7 @@ Use newline-delimited JSON over TCP, one JSON object per line, with an explicit 
 
 ### Git collaboration workflow
 
-1. Ian invites the teammate via **Repository → Settings → Collaborators → Add people**. The teammate accepts and clones the repo.
+1. Ian invites the Tony via **Repository → Settings → Collaborators → Add people**. The Tony accepts and clones the repo.
 2. For each task: `git switch main` and `git pull origin main`.
 3. Create a task branch, for example `git switch -c feature/step-4-rsa-keys`.
 4. Implement and test the task, then `git add .` and `git commit -m "Step 4: add password-protected RSA keys"`.
@@ -170,11 +170,11 @@ python test_protocol.py -v
 
 Expected: six tests with `ok`, ending in `Ran 6 tests` and `OK`.
 
-### Next task — Commit 2 (teammate)
+### Next task — Commit 2 (Tony)
 
 Update `server.py` to use `send_json()` and `receive_json()`, add JSON
 registration and an online-user list, and verify the server can handle multiple
-registered clients. Keep encryption for later commits. The teammate should
+registered clients. Keep encryption for later commits. The Tony should
 create a separate feature branch and merge it by pull request.
 
 ## Installing the cryptography dependency (starting at Step 2)
