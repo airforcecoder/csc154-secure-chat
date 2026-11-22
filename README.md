@@ -17,42 +17,77 @@ through a relay server. The clients will encrypt, sign, verify, and decrypt
 messages. The server should route encrypted messages without knowing their
 plaintext or ever having an RSA private key or usable AES key.
 
-## Two-person development plan — one task per commit
+## Team split — sequential milestones, separate commits
 
-**GitHub team:** Owner (Ian) + Teammate (add the teammate as a repository collaborator).
-**Rule:** Each row represents **one working, tested commit**. The listed commit messages are examples, not commits that already exist. Only Step 0 is complete. Each person owns their main files to reduce merge conflicts: Ian owns `client.py` and `protocol.py`; Teammate owns `server.py` and `crypto_utils.py`.
+**Development rule:** Every numbered milestone is its own commit. The numbers give us an *integration order*, but some tasks may be developed in parallel on separate branches. **Don't split the tasks into 1–7 for one person and 8–14 for the other** — later tasks depend on earlier work.
 
-**Shared protocol contract before parallel work:** Agree on newline-delimited JSON over TCP (one JSON object per line), type names (`register`, `users_request`, `users_response`, `key_request`, `key_response`, `secure_message`, `error`, `quit`), required field names, signed-field ordering, and an explicit maximum packet size. `protocol.py` holds shared send/receive helpers. Server-side `from` must match the registered socket; client-side sender/recipient must match the verified signature. Public keys must be pinned/verified independently to resist server key substitution.
+**Who edits what:** Ian primarily owns `client.py` and `protocol.py`; teammate primarily owns `server.py` and `crypto_utils.py`. Ian adds the crypto tests in `tests/` after the teammate completes the crypto interface. Both handle final testing and documentation.
 
-| Commit | Owner | Deliverable to implement and test | Suggested commit message |
+| Commit | Assigned | What to finish | Requires |
 |---|---|---|---|
-| **0 — Done** | Ian | Import original CSC 138 client/server; README and ignores | `Step 0: Original CSC 138 chat application` |
-| **1** | Ian | `protocol.py`: JSON framing, helpers, message format; test partial/multiple TCP packets | `Step 1: define framed JSON protocol` |
-| **2** | Teammate | `server.py`: JSON registration and online user lists, thread safety | `Step 2: handle JSON registration and users on server` |
-| **3** | Ian | `client.py`: use JSON registration, `LIST`, `QUIT`, receiving thread | `Step 3: add JSON client commands` |
-| **4** | Teammate | `crypto_utils.py`: RSA-2048+ key creation, password-encrypted PEM save/load | `Step 4: add password-protected RSA keys` |
-| **5** | Teammate | `crypto_utils.py`: fresh AES-256-GCM key/nonce per message, RSA-OAEP key wrapping, SHA-256/RSA-PSS signatures covering all required fields, verify before decrypt | `Step 5: implement encrypt sign verify decrypt` |
-| **6** | Teammate | `tests/test_crypto.py`: valid message, changed header, changed ciphertext, wrong key, bad signature | `Step 6: test crypto and tamper rejection` |
-| **7** | Teammate | `server.py`: username/public-key directory, requests, unknown-user errors, reject forged sender sockets | `Step 7: add server public-key directory` |
-| **8** | Ian | `client.py`: prompt for key password, generate/load private key, register public key, cache and independently verify/pin peer fingerprint | `Step 8: manage and verify client keys` |
-| **9** | Teammate | `server.py`: relay `secure_message` unchanged, ciphertext-only logging, no plaintext/private keys/AES keys | `Step 9: relay encrypted packets without reading them` |
-| **10** | Ian | `client.py`: `MESG` generates fresh AES key and nonce, message number and timestamp; encrypt/sign and send JSON | `Step 10: encrypt and sign outgoing messages` |
-| **11** | Ian | `client.py`: verify sender signature and headers, replay number check, then decrypt/display; clean errors | `Step 11: verify decrypt and reject replays` |
-| **12** | Teammate | `server.py`: `--malicious` test actions for ciphertext tamper, header tamper, misroute, replay | `Step 12: add malicious relay demonstrations` |
-| **13** | Both | Run Alice/Bob/Carol, assert valid delivery, server secrecy and all four rejected attacks; fix integration problems in small follow-up commits | `Step 13: test three-client secure chat` |
-| **14** | Ian (report/README) + Teammate (video) | Update execution docs, `requirements.txt`, test results; 1–2 page PDF, 2-minute demo, submission ZIP excluding keys and passwords | `Step 14: finalize documentation and submission` |
+| **0 ✅** | Ian | Save original CSC 138 client/server to GitHub | Done: `89b1fed` |
+| **1** | **Ian** | `protocol.py`: framed JSON send/receive and documented message types | 0 |
+| **2** | **Teammate** | `server.py`: JSON registration and `LIST` for multiple clients | 1 |
+| **3** | **Ian** | `client.py`: JSON registration, `LIST`, `QUIT`, receiving thread | 1, 2 |
+| **4** | **Teammate** | `crypto_utils.py`: RSA key generation, password-protected PEM save/load | 0 (can start alongside 1) |
+| **5** | **Teammate** | `crypto_utils.py`: AES-256-GCM, RSA-OAEP, RSA-PSS/SHA-256 with signed headers; verify before decrypt | 4; agree on packet schema from 1 |
+| **6** | **Ian** | `tests/test_crypto.py`: success, bad signatures, altered fields, wrong keys | 5 |
+| **7** | **Teammate** | `server.py`: username/public-key directory and key lookups | 2, 4 |
+| **8** | **Ian** | `client.py`: generate/load user keys, request and independently verify/pin public keys | 3, 4, 7 |
+| **9** | **Teammate** | `server.py`: route encrypted payload unchanged; ciphertext-only logs | 7 |
+| **10** | **Ian** | `client.py`: `MESG` encrypts/signs outgoing messages with fresh key/nonce and message number | 5, 8, 9 |
+| **11** | **Ian** | `client.py`: verify before decrypt/display; reject replayed message numbers | 6, 10 |
+| **12** | **Teammate** | Server `--malicious` tests: ciphertext tampering, altered headers, misrouting, replay | 9, 11 |
+| **13** | **Both** | Alice/Bob/Carol integration tests and fixes; prove server sees no plaintext | 11, 12 |
+| **14** | **Both** | Final README, requirements, source ZIP, two-minute demo, 1–2 page PDF report, GitHub link | 13 |
 
-### Collaboration workflow
+### Personal checklists
 
-1. Ian invites the teammate on GitHub: **Repository → Settings → Collaborators → Add people**. The teammate accepts and clones the repo.
-2. Before starting a task, update `main`: `git switch main`, then `git pull origin main`.
-3. Create a branch for the task, e.g. `git switch -c feature/step-4-rsa-keys`.
-4. Implement **only that task** and run its tests. Commit: `git add .` then `git commit -m "Step 4: add password-protected RSA keys"`.
-5. Push: `git push -u origin feature/step-4-rsa-keys`. Open a GitHub pull request into `main`, review/test, then merge.
-6. Pull `main` again before the next task. **Do not both edit `main` or the same files simultaneously.** When a step needs the other person's change, merge the dependency first.
-7. For Step 13, agree on tests and merge fixes one at a time; each security test should demonstrate refusal without revealing plaintext.
+**Ian — client, protocol, and crypto tests**
 
-**Handoff points:** Finish commits 1–3 (JSON) before networking integration; commits 4–6 (crypto) can be developed in parallel. Complete commits 7–9 before secure messaging (10–11), and do commit 12 after receiving-side verification is functional. Run integration tests before recording the video.
+- [x] Commit 0 — original CSC 138 starter
+- [ ] Commit 1 — JSON protocol
+- [ ] Commit 3 — JSON client
+- [ ] Commit 6 — crypto tests
+- [ ] Commit 8 — key management in client
+- [ ] Commit 10 — encrypted sending
+- [ ] Commit 11 — verified receiving + replay prevention
+- [ ] Commit 13 — integration testing (together)
+- [ ] Commit 14 — report/docs/demo (together)
+
+**Teammate — server and cryptography**
+
+- [ ] Commit 2 — JSON server
+- [ ] Commit 4 — RSA key creation/storage
+- [ ] Commit 5 — crypto functions
+- [ ] Commit 7 — public-key directory
+- [ ] Commit 9 — ciphertext relay and logs
+- [ ] Commit 12 — malicious-server attack demonstrations
+- [ ] Commit 13 — integration testing (together)
+- [ ] Commit 14 — report/docs/demo (together)
+
+### Best order to work together
+
+1. **Start in parallel:** Ian works on **1** (protocol); teammate works on **4** (RSA key generation). Agree on the JSON field names and protocol before joining code.
+2. **Connect the baseline:** Teammate works on **2**, then Ian on **3**. In parallel, teammate can complete **5**.
+3. **Build security:** Ian tests the crypto module in **6**; teammate implements the key directory in **7**. Ian then integrates keys in **8**.
+4. **Finish secure chat:** Teammate completes relay **9**; Ian completes send/receive **10–11**; teammate adds attack tests **12**.
+5. **Finish together:** Run **13**, then complete **14**.
+
+These are **planned future commits**, not already implemented code. They should be created only after the corresponding code is written and tested.
+
+### Shared protocol / security agreement
+
+Use newline-delimited JSON over TCP, one JSON object per line, with an explicit maximum message size. Agree on names such as `register`, `users_request`, `users_response`, `key_request`, `key_response`, `secure_message`, `error`, and `quit`. Sign `sender | recipient | message_number | timestamp | encrypted_key | nonce | ciphertext` in the professor's required order. The server must authenticate the sending socket's registered username; clients must independently validate/pin peer public keys, as server-provided keys alone can be substituted.
+
+### Git collaboration workflow
+
+1. Ian invites the teammate via **Repository → Settings → Collaborators → Add people**. The teammate accepts and clones the repo.
+2. For each task: `git switch main` and `git pull origin main`.
+3. Create a task branch, for example `git switch -c feature/step-4-rsa-keys`.
+4. Implement and test the task, then `git add .` and `git commit -m "Step 4: add password-protected RSA keys"`.
+5. Push with `git push -u origin feature/step-4-rsa-keys`, open a pull request to `main`, review, and merge.
+6. Pull `main` again before the next milestone. Coordinate shared files and never push unrelated, incomplete changes just to preserve numerical order.
 
 ### Project files (current)
 
