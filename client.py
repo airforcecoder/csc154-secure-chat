@@ -1,40 +1,53 @@
 # client.py
-# Ian Wright
-# CSC 138
+# Ian Wright - Tony Tan
+# CSC 154
 # Programming Project
 
 import sys
 import socket
 import threading
 
-def receive_messages(client_socket):
-    # This function runs in a separate thread and just keeps waiting for messages from the server.
+# CSC 154 - Commit 3 - Use our JSON functions instead of sending regular text
+from protocol import send_json, receive_json
+
+
+def receive_messages(reader):
+    # This still runs in its own thread so I can keep typing while messages come in
     while True:
         try:
-            # Grab whatever the server sends over.
-            message = client_socket.recv(4096)
+            # Get the next JSON message from the server
+            message = receive_json(reader)
 
-            # If nothing comes through anymore the server probably closed.
-            if not message:
+            # If nothing comes through, the server probably disconnected
+            if message is None:
                 print("Disconnected from server.")
                 break
 
-            # Decode turns the bytes back into normal text.
-            print(message.decode().strip())
+            # Find out what kind of message the server sent
+            message_type = message["type"]
 
-        except Exception:
-            # If something breaks with the socket just stop the loop.
+            # For now just print what came back
+            # We'll make these look nicer after we get everything connected
+            print(message)
+
+            # If the server says goodbye, stop receiving
+            if message_type == "goodbye":
+                break
+
+        except Exception as e:
+            # If something breaks, stop this receiving thread
+            print("Error receiving message:", e)
             break
+
+
 
 def show_menu():
     print("\n========== CHAT COMMANDS ==========")
-    print("LIST              Show connected users")
-    print("MESG <user> <msg> Send a private message")
-    print("BCST <message>    Message everyone")
-    print("LOG               View your chat history")
-    print("HELP              Show this menu again")
-    print("QUIT              Leave the chatroom")
+    print("LIST    Show connected users")
+    print("HELP    Show this menu again")
+    print("QUIT    Leave the chatroom")
     print("===================================\n")
+
 
 def main():
     # Need hostname and port or else the client will not know where to connect.
@@ -58,11 +71,18 @@ def main():
         print("Could not connect to server:", e)
         sys.exit(1)
 
-    # Make another thread that only handles receiving messages.
+    # CSC 154 - Commit 3 - Make a reader for JSON messages
+    # rb means read binary, so we can read the bytes coming from the server
+    reader = client_socket.makefile("rb")
+
+    
+    # CSC 154 - Commit 3 - Use our JSON reader for incoming messages
+    # This thread still lets me receive messages while I'm typing
     receive_thread = threading.Thread(
         target=receive_messages,
-        args=(client_socket,)
+        args=(reader,)
     )
+
 
     # Daemon means this thread dies too when the program closes.
     receive_thread.daemon = True
@@ -70,19 +90,25 @@ def main():
     # Start the thread.
     receive_thread.start()
 
-    # First thing user should do is JOIN.
-    user_input = input("Enter JOIN followed by your username: ").strip()
+    
+    # CSC 154 - Commit 3 - Register the user with JSON instead of JOIN
+    # Just type the username now, we don't need to type JOIN anymore
+    username = input("Enter your username: ").strip()
 
-    if user_input:
+    # Make sure they actually typed something
+    while not username:
+        print("Please enter a username.")
+        username = input("Enter your username: ").strip()
 
-        # If I only type my username this automatically adds JOIN.
-        # Example: bob becomes JOIN bob.
-        if not user_input.startswith("JOIN "):
-            user_input = "JOIN " + user_input
+    # Send the username to the server using JSON
+    send_json(client_socket, {
+        "type": "register",
+        "username": username
+    })
 
-        # Send JOIN message to server.
-        client_socket.sendall(user_input.encode())
-        show_menu()
+    # Show the commands after registering
+    show_menu()
+
 
     # Keep letting the user type commands.
     while True:
@@ -94,17 +120,38 @@ def main():
             if not user_input:
                 continue
 
-            # Send the message/command to the server.
-            client_socket.sendall(user_input.encode())
+            
+            # CSC 154 - Commit 3 - Send commands using JSON now
+            # Make the command uppercase so list and LIST both work
+            command = user_input.upper()
 
-            # If user types QUIT end the client.
-            if user_input == "QUIT":
+            if command == "LIST":
+                # Ask the server who is connected
+                send_json(client_socket, {
+                    "type": "users_request"
+                })
+
+            elif command == "QUIT":
+                # Tell the server we're leaving
+                send_json(client_socket, {
+                    "type": "quit"
+                })
                 break
+
+            elif command == "HELP":
+                # Just show the commands again
+                show_menu()
+
+            else:
+                # We haven't added encrypted messages yet
+                print("Unknown command. Try LIST, HELP, or QUIT.")
+
 
         except KeyboardInterrupt:
             # If Ctrl+C happens try to quit normally first.
             try:
-                client_socket.sendall("QUIT".encode())
+                # Send quit using JSON instead of regular text
+                send_json(client_socket, {"type": "quit"})
             except Exception:
                 pass
 
@@ -114,9 +161,19 @@ def main():
             # If something random breaks just leave the loop.
             break
 
-    # Close the socket before ending the program.
+    
+    # Give the receiving thread a chance to get the goodbye message
+    # Wait up to 2 seconds before closing the client
+    receive_thread.join(timeout=2)
+
+    # Close the reader if the thread is finished
+    if not receive_thread.is_alive():
+        reader.close()
+
+    # Close the socket before ending thepython client.py 127.0.0.1 5000 program
     client_socket.close()
     print("Client closed.")
+
 
 if __name__ == "__main__":
     main()
