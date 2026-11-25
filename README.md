@@ -16,7 +16,7 @@ We are doing one step per commit so it's easier to tell what changed.
 - [x] Step 0 - Added my old CSC 138 client.py and server.py
 - [x] Step 1 - Added protocol.py for sending/receiving JSON. 6 tests passed.
 - [x] Step 2 - Changed server.py to register users, show LIST and handle QUIT with JSON. Tested with Alice and Bob.
-- [ ] Step 3 - Change client.py to use JSON too
+- [x] Step 3 - Changed client.py to use JSON. Tested Alice and Bob with LIST, HELP, QUIT and join/leave messages.
 - [ ] Step 4 - Generate RSA keys and save the private key with a password
 - [ ] Step 5 - Add AES encryption, RSA key wrapping and digital signatures
 - [ ] Step 6 - Test encryption and see what happens when a message is changed
@@ -63,7 +63,7 @@ Run the server:
 python server.py 5000
 ```
 
-Test Step 2 with `python test_server.py` while the server is running. Alice and Bob registered, LIST worked, and quitting updated the user list. The old `client.py` won't work with the JSON server until Step 3.
+We tested Step 2 with `python test_server.py` and Step 3 using the actual client in two terminals. Alice and Bob could register, use LIST and HELP, and see when someone joined or left. Chat messages aren't added yet.
 
 ## GitHub
 
@@ -77,7 +77,7 @@ git switch -c feature/step-N
 
 After testing, add the files for that step, commit and push the branch, then make a pull request.
 
-Steps 0, 1 and 2 are merged. Step 2 was merged in [PR #2](https://github.com/airforcecoder/csc154-secure-chat/pull/2). Next I'm working on Step 3 (the JSON client).
+Steps 0-3 are merged. Step 2 is [PR #2](https://github.com/airforcecoder/csc154-secure-chat/pull/2) and Step 3 is [PR #3](https://github.com/airforcecoder/csc154-secure-chat/pull/3). Next is Step 4 (RSA keys).
 
 ## Report / video
 
