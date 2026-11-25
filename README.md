@@ -5,7 +5,7 @@
 **Starting point:** My CSC 138 Python chat client/server project
 
 > **Project status: Step 1 complete — JSON protocol and six local tests passed.**
-> Step 1 is merged into `main` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1), source commit `9ddef60`). Next: **Commit 2 — JSON server** (Tony).
+> Step 1 is merged into `main` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1), source commit `9ddef60`). Next: **Commit 2 — JSON server** (Ian).
 >
 > `client.py` and `server.py` currently send and log **plaintext**. They are a
 > networking foundation, **not a secure chat application yet**. Do not use them
@@ -18,64 +18,75 @@ through a relay server. The clients will encrypt, sign, verify, and decrypt
 messages. The server should route encrypted messages without knowing their
 plaintext or ever having an RSA private key or usable AES key.
 
-## Team split — sequential milestones, separate commits
+## Team split — first half Ian, second half Tony
 
-**Development rule:** Every numbered milestone is its own commit. The numbers give us an *integration order*, but some tasks may be developed in parallel on separate branches. **Don't split the tasks into 1–7 for one person and 8–14 for the other** — later tasks depend on earlier work.
+We are building this in order and making **one tested commit for each numbered task**. Ian completes **Commits 0–7**, then Tony takes over **Commits 8–12**. **Commits 13–14 are shared final testing and submission**, with Tony leading the final integration/demo and Ian contributing the first draft of the written report.
 
-**Who edits what:** Ian primarily owns `client.py` and `protocol.py`; Tony primarily owns `server.py` and `crypto_utils.py`. Ian adds the crypto tests in `tests/` after the Tony completes the crypto interface. Both handle final testing and documentation.
+This replaces the previous split by client/server files. Both of us may need to edit `client.py` and `server.py`, but **at different stages**. This avoids one person waiting for unfinished dependencies. Don't begin integrating a later step until the required earlier code is merged into `main`.
 
-| Commit | Assigned | What to finish | Requires |
+| Commit | Owner | What to finish | Depends on |
 |---|---|---|---|
-| **0 ✅** | Ian | Save original CSC 138 client/server to GitHub | Done: `89b1fed` |
-| **1 ✅** | **Ian** | `protocol.py`: newline-delimited JSON send/receive; six passing protocol tests | Done: `9ddef60` ([PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1)) |
-| **2** | **Tony** | `server.py`: JSON registration and `LIST` for multiple clients | 1 |
-| **3** | **Ian** | `client.py`: JSON registration, `LIST`, `QUIT`, receiving thread | 1, 2 |
-| **4** | **Tony** | `crypto_utils.py`: RSA key generation, password-protected PEM save/load | 0 (can start alongside 1) |
-| **5** | **Tony** | `crypto_utils.py`: AES-256-GCM, RSA-OAEP, RSA-PSS/SHA-256 with signed headers; verify before decrypt | 4; agree on packet schema from 1 |
-| **6** | **Ian** | `tests/test_crypto.py`: success, bad signatures, altered fields, wrong keys | 5 |
-| **7** | **Tony** | `server.py`: username/public-key directory and key lookups | 2, 4 |
-| **8** | **Ian** | `client.py`: generate/load user keys, request and independently verify/pin public keys | 3, 4, 7 |
-| **9** | **Tony** | `server.py`: route encrypted payload unchanged; ciphertext-only logs | 7 |
-| **10** | **Ian** | `client.py`: `MESG` encrypts/signs outgoing messages with fresh key/nonce and message number | 5, 8, 9 |
-| **11** | **Ian** | `client.py`: verify before decrypt/display; reject replayed message numbers | 6, 10 |
-| **12** | **Tony** | Server `--malicious` tests: ciphertext tampering, altered headers, misrouting, replay | 9, 11 |
-| **13** | **Both** | Alice/Bob/Carol integration tests and fixes; prove server sees no plaintext | 11, 12 |
-| **14** | **Both** | Final README, requirements, source ZIP, two-minute demo, 1–2 page PDF report, GitHub link | 13 |
+| **0 ✅** | **Ian** | Preserve original CSC 138 client/server and starter files | Done: `89b1fed` |
+| **1 ✅** | **Ian** | `protocol.py` JSON framing and six protocol tests | Done: `9ddef60`, [PR #1](https://github.com/airforcecoder/csc154-secure-chat/pull/1) |
+| **2** | **Ian** | Update `server.py` for JSON registration and online user list | 1 |
+| **3** | **Ian** | Update `client.py` for JSON registration, LIST, QUIT, receiving thread | 2 |
+| **4** | **Ian** | `crypto_utils.py`: RSA key pairs and password-protected PEM storage | 0 |
+| **5** | **Ian** | `crypto_utils.py`: AES-256-GCM, RSA-OAEP, RSA-PSS/SHA-256; sign required headers; verify before decrypt | 4, shared protocol |
+| **6** | **Ian** | Crypto unit tests: valid messages, tampering, incorrect keys/signatures | 5 |
+| **7** | **Ian** | Server public-key directory and key request/response handling | 2, 4 |
+| **8** | **Tony** | Client key generation/loading, recipient key lookup and independent fingerprint verification | 3, 4, 7 |
+| **9** | **Tony** | Server forwards encrypted packets unchanged; ciphertext-only logging | 7 |
+| **10** | **Tony** | Client encrypts/signs outgoing messages; fresh AES key/nonce, timestamp, message number | 5, 8, 9 |
+| **11** | **Tony** | Client checks recipient, replay number and signature before decrypting/displaying | 6, 10 |
+| **12** | **Tony** | Malicious-server mode: alter ciphertext/header, misroute, and replay messages | 9, 11 |
+| **13** | **Both; Tony leads** | Test Alice, Bob, Carol, logs, successful messages and all rejected attacks | 11, 12 |
+| **14** | **Both; Tony assembles final submission** | ZIP, 2-minute demo, 1–2 page report (prepared in Word, exported to PDF), final GitHub link | 13 |
 
-### Personal checklists
+### Ian's checklist — first half
 
-**Ian — client, protocol, and crypto tests**
-
-- [x] Commit 0 — original CSC 138 starter
-- [x] Commit 1 — JSON protocol and six tests (merged into `main`)
-- [ ] Commit 3 — JSON client
-- [ ] Commit 6 — crypto tests
-- [ ] Commit 8 — key management in client
-- [ ] Commit 10 — encrypted sending
-- [ ] Commit 11 — verified receiving + replay prevention
-- [ ] Commit 13 — integration testing (together)
-- [ ] Commit 14 — report/docs/demo (together)
-
-**Tony — server and cryptography**
-
+- [x] Commit 0 — CSC 138 starter
+- [x] Commit 1 — JSON protocol and six passing tests, merged
 - [ ] Commit 2 — JSON server
-- [ ] Commit 4 — RSA key creation/storage
-- [ ] Commit 5 — crypto functions
+- [ ] Commit 3 — JSON client
+- [ ] Commit 4 — RSA key generation and secure storage
+- [ ] Commit 5 — AES encryption, key wrapping, signatures and verification
+- [ ] Commit 6 — cryptography tests
 - [ ] Commit 7 — public-key directory
-- [ ] Commit 9 — ciphertext relay and logs
-- [ ] Commit 12 — malicious-server attack demonstrations
-- [ ] Commit 13 — integration testing (together)
-- [ ] Commit 14 — report/docs/demo (together)
+- [ ] Write Ian's sections of the report in Word (draft while coding; update details to match implementation)
 
-### Best order to work together
+### Tony's checklist — second half
 
-1. **Step 1 is merged:** Ian finished **1** (protocol). Tony can now work on **2** (JSON server) and develop **4** (RSA key generation) in parallel. Agree on the JSON field names and protocol before integrating code.
-2. **Connect the baseline:** Tony works on **2**, then Ian on **3**. In parallel, Tony can complete **5**.
-3. **Build security:** Ian tests the crypto module in **6**; Tony implements the key directory in **7**. Ian then integrates keys in **8**.
-4. **Finish secure chat:** Tony completes relay **9**; Ian completes send/receive **10–11**; Tony adds attack tests **12**.
-5. **Finish together:** Run **13**, then complete **14**.
+- [ ] Commit 8 — client key management and trust checking
+- [ ] Commit 9 — encrypted relay and server logs
+- [ ] Commit 10 — encrypted sending
+- [ ] Commit 11 — verified receiving and replay rejection
+- [ ] Commit 12 — malicious-server demonstrations
+- [ ] Lead Commit 13 — three-client integration and security tests (both participate)
+- [ ] Lead Commit 14 — demonstration video, final ZIP/PDF and submission (both participate)
 
-Only **Commits 0 and 1** are complete. All other numbered commits are planned future work, not implemented code. Create each after its code is written and tested.
+### Written report division — start in Word now
+
+The instructor requires a **1–2 page PDF report** covering design, encryption/decryption, testing results, challenges, and limitations. Draft it in Word first and **export the completed report to PDF** for submission. Do not claim tests passed until they have actually been run.
+
+| Report part | Owner | What to document |
+|---|---|---|
+| Introduction and system design | **Ian** | CSC 138 starting point, TCP client/server, JSON framing, server as directory/relay, roles of Alice/Bob/Carol |
+| Cryptography design and encryption process | **Ian** | RSA-2048+ keys/password protection; AES-256-GCM with new key/nonce per message; RSA-OAEP wrapped AES key; SHA-256/RSA-PSS signatures covering header + encrypted fields |
+| Receiving, verification, and replay protection | **Tony** | Public-key validation/pinning, signature-first verification, decrypting only on success, message-number checks |
+| Tests, attack results, challenges, and limitations | **Tony** | Three-client tests, ciphertext-only logs, tamper/misroute/replay rejection, issues encountered, threat-model limitations; use actual results |
+| Final editing and submission | **Both** | Keep within 1–2 pages, confirm code matches explanations, export PDF and include with other deliverables |
+
+**Ian can write now:** the introduction, architecture, what changed from CSC 138, and the JSON protocol test results (6 passed). Add cryptography details after Commits 4–6 are working. **Tony completes his report sections after Commits 8–13** so the report reflects actual end-to-end behavior and test results.
+
+### Handoff between halves
+
+1. Ian completes and merges **Commits 2–7**, one tested task at a time, into `main`.
+2. Ian tells Tony when Commit 7 is merged and shares exact setup commands, working commands, test results, JSON field names, and crypto helper interfaces.
+3. Tony pulls the updated `main` branch, creates a feature branch for Commit 8, and completes **8–12** in order with tests and pull requests.
+4. Both run the final integration/security checks; Tony leads recording and packaging while each person finishes their report sections.
+5. Preserve clear Git commit authorship and PR history for both contributors. Report who actually implemented and tested each part.
+
+**Status as of November 25, 2026:** Only Commits **0 and 1** are confirmed merged into `main`. Later rows are planned assignments, not completed work.
 
 ### Shared protocol / security agreement
 
@@ -83,11 +94,11 @@ Use newline-delimited JSON over TCP, one JSON object per line, with an explicit 
 
 ### Git collaboration workflow
 
-1. Ian invites the Tony via **Repository → Settings → Collaborators → Add people**. The Tony accepts and clones the repo.
+1. Ian adds Tony (GitHub username `ttan815`) via **Repository → Settings → Collaborators → Add people** if he has not already been invited. Tony accepts and clones the repo.
 2. For each task: `git switch main` and `git pull origin main`.
-3. Create a task branch, for example `git switch -c feature/step-4-rsa-keys`.
-4. Implement and test the task, then `git add .` and `git commit -m "Step 4: add password-protected RSA keys"`.
-5. Push with `git push -u origin feature/step-4-rsa-keys`, open a pull request to `main`, review, and merge.
+3. Create a task branch, for example `git switch -c feature/step-2-json-server`.
+4. Implement and test the task, then `git add .` and `git commit -m "Step 2: add JSON server commands"`.
+5. Push with `git push -u origin feature/step-2-json-server`, open a pull request to `main`, review, and merge.
 6. Pull `main` again before the next milestone. Coordinate shared files and never push unrelated, incomplete changes just to preserve numerical order.
 
 ### Project files (current)
@@ -170,14 +181,14 @@ python test_protocol.py -v
 
 Expected: six tests with `ok`, ending in `Ran 6 tests` and `OK`.
 
-### Next task — Commit 2 (Tony)
+### Next task — Commit 2 (Ian)
 
 Update `server.py` to use `send_json()` and `receive_json()`, add JSON
 registration and an online-user list, and verify the server can handle multiple
-registered clients. Keep encryption for later commits. The Tony should
+registered clients. Keep encryption for later commits. Ian should
 create a separate feature branch and merge it by pull request.
 
-## Installing the cryptography dependency (starting at Step 2)
+## Installing the cryptography dependency (needed for Commit 4 onward)
 
 ```powershell
 python -m pip install -r requirements.txt
