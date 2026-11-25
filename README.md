@@ -15,7 +15,7 @@ We are doing one step per commit so it's easier to tell what changed.
 ### Ian
 - [x] Step 0 - Added my old CSC 138 client.py and server.py
 - [x] Step 1 - Added protocol.py for sending/receiving JSON. 6 tests passed.
-- [ ] Step 2 - Change server.py to register users, show LIST and handle QUIT with JSON
+- [x] Step 2 - Changed server.py to register users, show LIST and handle QUIT with JSON. Tested with Alice and Bob.
 - [ ] Step 3 - Change client.py to use JSON too
 - [ ] Step 4 - Generate RSA keys and save the private key with a password
 - [ ] Step 5 - Add AES encryption, RSA key wrapping and digital signatures
@@ -63,7 +63,7 @@ Run the server:
 python server.py 5000
 ```
 
-During Step 2 I'm using `python test_server.py` to test the JSON server with Alice and Bob. That file is still local until I push Step 2. The old `client.py` won't work with the JSON server until Step 3.
+Test Step 2 with `python test_server.py` while the server is running. Alice and Bob registered, LIST worked, and quitting updated the user list. The old `client.py` won't work with the JSON server until Step 3.
 
 ## GitHub
 
@@ -77,7 +77,7 @@ git switch -c feature/step-N
 
 After testing, add the files for that step, commit and push the branch, then make a pull request.
 
-So far Step 0 and Step 1 are merged. Step 2 worked in my local tests but isn't merged yet.
+Steps 0, 1 and 2 are merged. Step 2 was merged in [PR #2](https://github.com/airforcecoder/csc154-secure-chat/pull/2). Next I'm working on Step 3 (the JSON client).
 
 ## Report / video
 
