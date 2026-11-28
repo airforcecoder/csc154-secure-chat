@@ -1,4 +1,3 @@
-
 # server.py
 # Ian Wright - Tony Tan
 # CSC 154
@@ -9,6 +8,8 @@
 import sys
 import socket
 import threading
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 # Use the JSON functions we made in Commit 1
 from protocol import send_json, receive_json
@@ -19,6 +20,12 @@ MAX_USERS = 10
 # This dictionary keeps track of users in the chat
 # Each username has a socket and a lock for sending messages
 clients = {}
+
+
+# This dictionary keeps track of everyone's public key.
+# When someone wants to message another user, they can ask the server for their key.
+public_keys = {}
+
 
 # This lock is here because multiple threads could touch clients at the same time
 clients_lock = threading.Lock()
@@ -67,6 +74,8 @@ def client_handler(client_socket, client_address):
                 if command == "register":
                     # Grab the username from the JSON message
                     requested_username = message.get("username")
+                    # Grab their public key too so other users can request it later
+                    requested_public_key = message.get("public_key")
 
                     # Make sure they actually gave us a username
                     if not isinstance(requested_username, str) or not requested_username.strip():
@@ -76,7 +85,38 @@ def client_handler(client_socket, client_address):
                         })
                         continue
 
+                    # Make sure they sent a public key with their username
+                    if not isinstance(requested_public_key, str) or not requested_public_key.strip():
+                        send_message(client_socket, send_lock, {
+                            "type": "error",
+                            "message": "Please provide a public key."
+                        })
+                        continue
+
                     requested_username = requested_username.strip()
+
+
+                    # Make sure they actually sent an RSA public key.
+                    # We also need it to be at least 2048 bits for the project.
+                    try:
+                        public_key = serialization.load_pem_public_key(
+                            requested_public_key.encode("utf-8")
+                        )
+
+                        if not isinstance(public_key, rsa.RSAPublicKey):
+                            raise ValueError("Not an RSA key.")
+
+                        if public_key.key_size < 2048:
+                            raise ValueError("RSA key is too small.")
+
+                    except (ValueError, TypeError) as e:
+                        # Don't register the user if their key isn't valid
+                        send_message(client_socket, send_lock, {
+                            "type": "error",
+                            "message": "Invalid public key."
+                        })
+                        continue
+
 
                     # Check everything before letting them register
                     with clients_lock:
@@ -90,10 +130,13 @@ def client_handler(client_socket, client_address):
                             error = "Username already taken."
 
                         else:
-                            # Save this username with their socket and send lock
+
+                            # Save the username, connection and public key
                             username = requested_username
                             clients[username] = (client_socket, send_lock)
+                            public_keys[username] = requested_public_key
                             error = None
+
 
                             # Get the other users so we can tell them who joined
                             other_clients = [
@@ -146,6 +189,42 @@ def client_handler(client_socket, client_address):
                         })
                         print(username, "requested LIST")
 
+
+                # This lets users request someone else's public key.
+                # The server looks up the username and sends their key back.
+                elif command == "key_request":
+                    # Make sure they registered first
+                    if username is None:
+                        send_message(client_socket, send_lock, {
+                            "type": "error",
+                            "message": "Please register first."
+                        })
+                        continue
+
+                    # Get the username they're asking about
+                    requested_user = message.get("username")
+
+                    # Look for their public key
+                    with clients_lock:
+                        public_key = public_keys.get(requested_user)
+
+                    # If we couldn't find the user, send an error
+                    if public_key is None:
+                        send_message(client_socket, send_lock, {
+                            "type": "error",
+                            "message": "Public key not found."
+                        })
+
+                    else:
+                        # Send the public key back to whoever requested it
+                        send_message(client_socket, send_lock, {
+                            "type": "key_response",
+                            "username": requested_user,
+                            "public_key": public_key
+                        })
+
+
+
                 # QUIT (now sent as quit through JSON)
                 elif command == "quit":
                     # Tell the user goodbye and then leave the loop
@@ -189,9 +268,16 @@ def client_handler(client_socket, client_address):
     finally:
         # Remove this user when they leave or lose the connection
         with clients_lock:
+
             if username is not None and username in clients:
+                # Remove the user from the chat when they leave
                 del clients[username]
+
+                # Remove their public key too since they're not online anymore
+                public_keys.pop(username, None)
+
                 print(username, "left the chatroom")
+
 
                 # Grab everyone who's still online
                 other_clients = list(clients.values())
@@ -236,9 +322,6 @@ def main():
     # Start listening for clients
     server_socket.listen(10)
 
-    
-    # Start listening for clients
-    server_socket.listen(10)
 
     # Check every second instead of waiting forever
     # This way Ctrl+C can stop the server
