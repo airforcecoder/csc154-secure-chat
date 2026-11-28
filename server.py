@@ -1,7 +1,7 @@
 
 # server.py
-# Ian Wright
-# CSC 138
+# Ian Wright - Tony Tan
+# CSC 154
 # Programming Project
 # Chat Server
 # CSC 154 - Commit 2 - Change the server to use JSON
