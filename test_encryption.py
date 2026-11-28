@@ -18,6 +18,8 @@ from crypto_utils import (
     decrypt_and_verify
 )
 
+import base64
+
 
 # This function tests sending an encrypted message from Alice to Bob.
 # We want to make sure Bob can verify it and get the original message back.
@@ -176,6 +178,88 @@ def test_full_message():
         print("Changed message number rejected!")
 
 
+    
+    # Now lets test someone changing who the message is going to.
+    # Alice sent it to Bob, so changing it to Carol should fail.
+    changed_recipient = secure_message.copy()
+    changed_recipient["to"] = "carol"
+
+    try:
+        # Try checking the changed message as Carol
+        decrypt_and_verify(
+            changed_recipient,
+            bob_private,
+            alice_public,
+            "carol"
+        )
+
+    except ValueError as e:
+        # The signature should fail because the recipient was changed
+        assert str(e) == "Signature verification failed."
+        print("Changed recipient rejected!")
+
+    else:
+        raise AssertionError("ERROR: Changed recipient was accepted!")
+
+
+
+    # Now lets test someone changing the encrypted AES key.
+    # Bob should reject it because the signature won't match.
+    changed_key_message = secure_message.copy()
+
+    # Turn the encrypted key back into bytes so we can change one
+    changed_key = bytearray(base64.b64decode(secure_message["encrypted_key"]))
+    changed_key[0] ^= 1
+
+    # Put the changed key back into the message
+    changed_key_message["encrypted_key"] = base64.b64encode(changed_key).decode("ascii")
+
+    try:
+        # Try verifying the message with the changed key
+        decrypt_and_verify(
+            changed_key_message,
+            bob_private,
+            alice_public,
+            "bob"
+        )
+
+    except ValueError as e:
+        # The signature should fail before Bob tries to decrypt
+        assert str(e) == "Signature verification failed."
+        print("Changed AES key rejected!")
+
+    else:
+        raise AssertionError("ERROR: Changed AES key was accepted!")
+
+
+
+    # This tests what happens if someone changes the signature.
+    # Bob should reject the message because the signature is no longer valid.
+    changed_signature_message = secure_message.copy()
+
+    # Turn the signature into bytes and change one byte
+    changed_signature = bytearray(base64.b64decode(secure_message["signature"]))
+    changed_signature[0] ^= 1
+
+    # Put the changed signature back into the message
+    changed_signature_message["signature"] = base64.b64encode(changed_signature).decode("ascii")
+
+    try:
+        # Try verifying the message with the changed signature
+        decrypt_and_verify(
+            changed_signature_message,
+            bob_private,
+            alice_public,
+            "bob"
+        )
+
+    except ValueError as e:
+        # The signature should fail before Bob decrypts anything
+        assert str(e) == "Signature verification failed."
+        print("Corrupted signature rejected!")
+
+    else:
+        raise AssertionError("ERROR: Corrupted signature was accepted!")
 
 
 # Run both tests
