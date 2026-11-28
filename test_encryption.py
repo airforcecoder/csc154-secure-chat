@@ -13,7 +13,9 @@ from crypto_utils import (
     decrypt_aes_key,
     make_signed_data,
     sign_message,
-    verify_signature
+    verify_signature,
+    encrypt_and_sign,
+    decrypt_and_verify
 )
 
 
@@ -124,6 +126,59 @@ def test_encryption():
         raise AssertionError("ERROR: Original signature failed!")
 
 
-# Run our test
+
+# This function tests our full encryption and decryption process.
+# Alice sends an encrypted message and Bob checks it before reading it.
+def test_full_message():
+    # Make keys for Alice and Bob
+    alice_private, alice_public = generate_key_pair()
+    bob_private, bob_public = generate_key_pair()
+
+    # Alice encrypts and signs a message for Bob
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    secure_message = encrypt_and_sign(
+        "Hello Bob!",
+        "alice",
+        "bob",
+        1,
+        timestamp,
+        alice_private,
+        bob_public
+    )
+
+    # Bob checks the signature and decrypts the message
+    message = decrypt_and_verify(
+        secure_message,
+        bob_private,
+        alice_public,
+        "bob"
+    )
+
+    # Make sure Bob received the correct message
+    assert message == "Hello Bob!"
+    print("Full message test passed!")
+
+    # Now change the message number to see if the signature catches it
+    changed_message = secure_message.copy()
+    changed_message["message_number"] = 2
+
+    try:
+        decrypt_and_verify(
+            changed_message,
+            bob_private,
+            alice_public,
+            "bob"
+        )
+        raise AssertionError("ERROR: Changed message was accepted!")
+
+    except ValueError:
+        print("Changed message number rejected!")
+
+
+
+
+# Run both tests
 if __name__ == "__main__":
     test_encryption()
+    test_full_message()

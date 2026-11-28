@@ -9,7 +9,6 @@ from cryptography.hazmat.primitives import serialization
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidSignature
-import json
 import base64
 
 # This function makes a new RSA private and public key for the user.
@@ -245,27 +244,109 @@ def verify_signature(data, signature, public_key):
 
 
 
+
 # This function puts all the message information together before we sign it.
-# Both the sender and receiver need to use the same order or the signature won't match.
+# We're using | to separate everything like the project instructions say.
 def make_signed_data(sender, recipient, message_number, timestamp, encrypted_key, nonce, ciphertext):
-    # Turn the encrypted bytes into text so JSON can handle them.
-    # Keep everything in the order our project requires.
+    # Turn the encrypted bytes into base64 text
+    # Keep the fields in the order the professor wants
     data = [
         sender,
         recipient,
-        message_number,
+        str(message_number),
         timestamp,
         base64.b64encode(encrypted_key).decode("ascii"),
         base64.b64encode(nonce).decode("ascii"),
         base64.b64encode(ciphertext).decode("ascii")
     ]
 
-    # Turn the data into JSON and then bytes so we can sign it.
-    signed_data = json.dumps(
-        data,
-        separators=(",", ":"),
-        ensure_ascii=False
-    ).encode("utf-8")
+    # Don't allow the separator inside the header fields
+    if "|" in sender or "|" in recipient or "|" in timestamp:
+        raise ValueError("Invalid message header.")
 
-    # Give the data back so it can be signed or verified.
+    # Join everything with | and turn it into bytes
+    signed_data = "|".join(data).encode("utf-8")
+
+    # Return the data so we can sign or verify it
     return signed_data
+
+
+
+# This function encrypts and signs a message before sending it.
+# We use AES for the message, RSA for the AES key, and the sender's private key to sign it.
+def encrypt_and_sign(message, sender, recipient, message_number, timestamp, sender_private_key, recipient_public_key):
+    # First encrypt the message using AES
+    aes_key, nonce, ciphertext = encrypt_message(message)
+
+    # Encrypt the AES key using the receiver's public key
+    encrypted_key = encrypt_aes_key(aes_key, recipient_public_key)
+
+    # Put all the message information together so we can sign it
+    data = make_signed_data(
+        sender, recipient, message_number, timestamp,
+        encrypted_key, nonce, ciphertext
+    )
+
+    # Sign everything using the sender's private key
+    signature = sign_message(data, sender_private_key)
+
+    # Make our JSON message so it can be sent to the server
+    # Convert the encrypted bytes to base64 since JSON can't use regular bytes
+    secure_message = {
+        "type": "secure_message",
+        "from": sender,
+        "to": recipient,
+        "message_number": message_number,
+        "timestamp": timestamp,
+        "encrypted_key": base64.b64encode(encrypted_key).decode("ascii"),
+        "nonce": base64.b64encode(nonce).decode("ascii"),
+        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+        "signature": base64.b64encode(signature).decode("ascii")
+    }
+
+    # Give the encrypted message back so the client can send it
+    return secure_message
+
+
+
+# This function checks and decrypts a message someone sent us.
+# We check the signature first so we don't decrypt something that was changed.
+def decrypt_and_verify(secure_message, recipient_private_key, sender_public_key, username):
+    # Make sure this is actually an encrypted message
+    if secure_message["type"] != "secure_message":
+        raise ValueError("Not a secure message.")
+
+    # Make sure the message was meant for this user
+    if secure_message["to"] != username:
+        raise ValueError("This message was not meant for you.")
+
+    # Get the message information we need to check the signature
+    sender = secure_message["from"]
+    recipient = secure_message["to"]
+    message_number = secure_message["message_number"]
+    timestamp = secure_message["timestamp"]
+
+    # Turn the base64 text back into bytes
+    encrypted_key = base64.b64decode(secure_message["encrypted_key"], validate=True)
+    nonce = base64.b64decode(secure_message["nonce"], validate=True)
+    ciphertext = base64.b64decode(secure_message["ciphertext"], validate=True)
+    signature = base64.b64decode(secure_message["signature"], validate=True)
+
+    # Put the message information back together in the same order
+    data = make_signed_data(
+        sender, recipient, message_number, timestamp,
+        encrypted_key, nonce, ciphertext
+    )
+
+    # Check the signature using the sender's public key
+    if not verify_signature(data, signature, sender_public_key):
+        raise ValueError("Signature verification failed.")
+
+    # The signature worked, so now unlock the AES key
+    aes_key = decrypt_aes_key(encrypted_key, recipient_private_key)
+
+    # Decrypt the actual message
+    message = decrypt_message(aes_key, nonce, ciphertext)
+
+    # Give back the original message
+    return message
