@@ -1,33 +1,10 @@
 # CSC 154 - Secure Chat
 
-We're using my old CSC 138 chat project for this. The original client and server sent regular text, so we're changing it to send encrypted messages instead. Alice, Bob and Carol will all connect through the same server.
+Ian Wright and Tony Tan
 
-## What we've done
+We're using my CSC 138 chat program as the starting point. For this project we're changing it so users can send encrypted messages through a server instead of just sending regular text.
 
-We split the work into steps so we can test each part before moving on.
-
-### Ian
-- [x] 0 - Added the CSC 138 client and server
-- [x] 1 - Added `protocol.py` for JSON messages. 6 tests passed
-- [x] 2 - Updated the server for registration, LIST and QUIT
-- [x] 3 - Updated the client to use JSON. Tested with Alice and Bob
-- [x] 4 - Made RSA keys and saved the private keys with a password
-- [x] 5 - Added AES encryption, RSA-OAEP and signatures
-- [x] 6 - Tested changed messages, recipient, message number, AES key and signatures
-- [ ] 7 - Store public keys on the server so clients can request them
-
-### Tony
-- [ ] 8 - Load client keys and check other users' public keys
-- [ ] 9 - Have the server forward encrypted messages and log ciphertext
-- [ ] 10 - Send encrypted and signed messages from the client
-- [ ] 11 - Verify and decrypt incoming messages, and reject repeats
-- [ ] 12 - Add tests where the server changes or replays messages
-
-### Both
-- [ ] 13 - Test everything with Alice, Bob and Carol
-- [ ] 14 - Finish the ZIP, video and report
-
-## Running the project
+## Setup
 
 Install the requirements:
 
@@ -41,35 +18,43 @@ Start the server:
 python server.py 5000
 ```
 
-Start a client in another terminal:
+For now, open another terminal and test the public keys:
 
 ```powershell
-python client.py 127.0.0.1 5000
+python test_public_keys.py
 ```
 
-The client can register, LIST, HELP and QUIT right now. We haven't connected the encrypted chat messages to the server yet.
-
-## Tests
+Other tests:
 
 ```powershell
 python test_protocol.py -v
 python test_encryption.py
 ```
 
-The encryption tests passed locally. We checked that Bob could read a message from Alice, and that changed message data, wrong keys and bad signatures were rejected. Step 6 added more tests for changed recipients, message numbers and encrypted keys.
+The tests for encryption, signatures, wrong keys and changed messages passed.
 
-We also tested `test_keys.py` for saving and loading the RSA keys. It makes key files for Alice, so it won't overwrite them if they're already there.
+## Progress
 
-## Encryption
+### Ian
+- [x] Steps 0-3: Original chat code, JSON protocol, server and client changes
+- [x] Step 4: RSA keys and password-protected key files
+- [x] Step 5: AES encryption and signatures
+- [x] Step 6: Tests for changed messages and bad signatures
+- [x] Step 7: Server stores public keys and responds to key requests
 
-Each user has an RSA key pair. The private key is password-protected. We use a new AES-256-GCM key and nonce for every message, encrypt the AES key with the receiver's public key, and sign the message information with RSA-PSS and SHA-256.
+### Tony
+- [ ] Step 8: Load keys in the client and check other users' public keys
+- [ ] Steps 9-11: Send, receive and verify encrypted messages
+- [ ] Step 12: Malicious server tests
 
-The receiver checks the signature before decrypting. We still need to finish the public-key lookup, replay checks and actual client-to-client messaging.
+### Both
+- [ ] Test with Alice, Bob and Carol
+- [ ] Finish the video, report and ZIP
 
-## GitHub and submission
+## Notes
 
-We're making a branch for each step and merging it after testing. Steps 0-6 are merged. Next is Step 7.
+The encryption works in our local tests, but the actual chat messages aren't connected yet. The current `client.py` also doesn't send a public key when registering, so it won't register with the updated server until Step 8 is finished.
 
-I'm writing the introduction, how the client/server works and the encryption part of the report. Tony is doing the receiving side, attack tests, results and limitations.
+We'll update the client instructions once that part works.
 
-We need to turn in the code ZIP, a 2-minute video, a 1-2 page PDF report and the GitHub link. No private keys or passwords should be included. The `keys/` folder is in `.gitignore`.
+Don't include private keys or passwords in GitHub or the ZIP. The `keys/` folder is ignored by Git.
