@@ -1,11 +1,16 @@
 # Ian Wright - Tony Tan
 # crypto_utils.py
-# CSC 154 - Commit 4 - RSA keys
+# CSC 154 - RSA keys and encryption
 
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
-
+import os
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.exceptions import InvalidSignature
+import json
+import base64
 
 # This function makes a new RSA private and public key for the user.
 # We're using 2048 bits because that's what the project requires.
@@ -111,3 +116,156 @@ def load_keys(username, password):
     # Give both keys back so we can use them.
     return private_key, public_key
 
+
+
+
+# This function encrypts a message using AES-256-GCM.
+# Each message gets a new AES key and nonce so we're not reusing them.
+def encrypt_message(message):
+    # Make sure we're encrypting a string
+    if not isinstance(message, str):
+        raise ValueError("Message must be text.")
+
+    # Generate a new 256 bit AES key for this message
+    aes_key = AESGCM.generate_key(bit_length=256)
+
+    # Generate a random 12 byte nonce for this message
+    nonce = os.urandom(12)
+
+    # Turn our message into bytes so AES can encrypt it
+    message_bytes = message.encode("utf-8")
+
+    # Encrypt the message using our AES key and nonce
+    aes = AESGCM(aes_key)
+    ciphertext = aes.encrypt(nonce, message_bytes, None)
+
+    # Return everything we need for the next encryption steps
+    return aes_key, nonce, ciphertext
+
+
+
+
+# This function decrypts a message using the AES key and nonce.
+# If someone changed the encrypted message, it should fail.
+def decrypt_message(aes_key, nonce, ciphertext):
+    # Use the same AES key that encrypted the message
+    aes = AESGCM(aes_key)
+
+    # Decrypt the message using the key and nonce
+    message_bytes = aes.decrypt(nonce, ciphertext, None)
+
+    # Turn the bytes back into normal text
+    message = message_bytes.decode("utf-8")
+
+    # Give the original message back
+    return message
+
+
+
+
+# This function encrypts our AES key using the receiver's RSA public key.
+# That way we don't have to send the AES key as regular text.
+def encrypt_aes_key(aes_key, public_key):
+    # Encrypt the AES key using RSA-OAEP
+    encrypted_key = public_key.encrypt(
+        aes_key,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    # Give back the encrypted AES key
+    return encrypted_key
+
+
+
+
+# This function decrypts the AES key using the receiver's private key.
+# Only the person with the matching RSA private key should be able to unlock it.
+def decrypt_aes_key(encrypted_key, private_key):
+    # Decrypt the AES key using RSA-OAEP
+    aes_key = private_key.decrypt(
+        encrypted_key,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    # Give back the original AES key
+    return aes_key
+
+
+
+
+# This function signs our message data using the sender's private key.
+# This lets the receiver check who sent it and if anything was changed.
+def sign_message(data, private_key):
+    # Sign the data using RSA-PSS and SHA-256
+    signature = private_key.sign(
+        data,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+
+    # Give back the signature so we can send it with the message
+    return signature
+
+
+
+
+
+# This function checks the signature using the sender's public key.
+# If the signature doesn't match, we shouldn't decrypt the message.
+def verify_signature(data, signature, public_key):
+    try:
+        # Check the signature using RSA-PSS and SHA-256
+        public_key.verify(
+            signature,
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+
+        # The signature matched
+        return True
+
+    except InvalidSignature:
+        # Something didn't match, so reject it
+        return False
+
+
+
+# This function puts all the message information together before we sign it.
+# Both the sender and receiver need to use the same order or the signature won't match.
+def make_signed_data(sender, recipient, message_number, timestamp, encrypted_key, nonce, ciphertext):
+    # Turn the encrypted bytes into text so JSON can handle them.
+    # Keep everything in the order our project requires.
+    data = [
+        sender,
+        recipient,
+        message_number,
+        timestamp,
+        base64.b64encode(encrypted_key).decode("ascii"),
+        base64.b64encode(nonce).decode("ascii"),
+        base64.b64encode(ciphertext).decode("ascii")
+    ]
+
+    # Turn the data into JSON and then bytes so we can sign it.
+    signed_data = json.dumps(
+        data,
+        separators=(",", ":"),
+        ensure_ascii=False
+    ).encode("utf-8")
+
+    # Give the data back so it can be signed or verified.
+    return signed_data
